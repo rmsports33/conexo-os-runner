@@ -60,6 +60,20 @@ class OwnershipTests(unittest.TestCase):
         self.assertEqual(len(claimed), 1)
         self.assertEqual(claimed[0]["id"], "single")
 
+    def test_concurrent_settlement_only_one_wins(self):
+        enqueue(self.db, "settle-once", {"type": "echo", "value": 1})
+        owned = acquire(self.db, "settlement-worker")
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(
+                lambda i: complete(self.db, "settle-once", owned["token"], {"winner": i}),
+                range(8)))
+        self.assertEqual(sum(results), 1)
+        self.assertEqual(summary(self.db), {"done": 1})
+        with closing(connect(self.db)) as conn:
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) FROM task_results WHERE task_id='settle-once'"
+            ).fetchone()[0], 1)
+
     def test_missing_owner_rejected(self):
         with self.assertRaises(ValueError):
             acquire(self.db, "")
