@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "mode": "read-only",
+    "clone_automatically": false,
+    "network_access": false,
+    "execute_modules": false
+  },
+  "modules": [
+    {
+      "id": "core",
+      "repository": "rmsports33/conexo-os",
+      "visibility": "private",
+      "purpose": "Núcleo e governança do Conexo OS",
+      "archived": false
+    },
+    {
+      "id": "runner",
+      "repository": "rmsports33/conexo-os-runner",
+      "visibility": "public",
+      "purpose": "Motor local de continuidade",
+      "archived": false
+    },
+    {
+      "id": "editor",
+      "repository": "rmsports33/bot-redator-artigo",
+      "visibility": "private",
+      "purpose": "Produção de conteúdo",
+      "archived": false
+    },
+    {
+      "id": "site",
+      "repository": "rmsports33/-site-conexotech",
+      "visibility": "private",
+      "purpose": "Site ConexoTech",
+      "archived": false
+    },
+    {
+      "id": "panel",
+      "repository": "rmsports33/conexotech-panel",
+      "visibility": "private",
+      "purpose": "Painel administrativo",
+      "archived": false
+    },
+    {
+      "id": "rss",
+      "repository": "rmsports33/MKT-RSS",
+      "visibility": "public",
+      "purpose": "RSS e marketing",
+      "archived": false
+    },
+    {
+      "id": "legacy",
+      "repository": "rmsports33/myGit",
+      "visibility": "public",
+      "purpose": "Repositório histórico",
+      "archived": true
+    }
+  ]
+}
