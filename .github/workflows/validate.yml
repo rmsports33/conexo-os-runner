@@ -5,20 +5,41 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '17 9 * * *'
+
 permissions:
   contents: read
+
+concurrency:
+  group: public-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout public repository
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Unit tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Validate public JSON samples
         run: python scripts/validate.py samples
+      - name: Write run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Conexo OS Runner — public validation'
+            echo "- Event: ${{ github.event_name }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- UTC: $(date -u +'%Y-%m-%d %H:%M:%S')"
+            echo '- Scope: public files only; no secrets or private repository access'
+          } >> "$GITHUB_STEP_SUMMARY"
