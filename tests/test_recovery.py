@@ -21,6 +21,8 @@ class RecoveryTests(unittest.TestCase):
             with conn:
                 conn.execute("UPDATE tasks SET updated_at=?,attempts=? WHERE id=?",
                     ((self.clock - timedelta(seconds=seconds)).isoformat(), attempts, task_id))
+                conn.execute("UPDATE task_leases SET heartbeat_at=? WHERE task_id=?",
+                    ((self.clock - timedelta(seconds=seconds)).isoformat(), task_id))
 
     def test_dry_run_does_not_modify(self):
         enqueue(self.db, "a", {})
