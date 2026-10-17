@@ -39,4 +39,9 @@ if ($LASTEXITCODE -eq 0) {
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "Module inventory failed; queue maintenance completed."
 }
+# M03: Generate portable status locally, without network access.
+python -m scripts.conexo_status
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Portable status generation failed; maintenance completed."
+}
 exit 0
