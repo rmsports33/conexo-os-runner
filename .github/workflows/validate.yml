@@ -75,5 +75,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m scripts.maintenance --db local-state/queue.sqlite3 check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c "import sqlite3; c=sqlite3.connect('local-state/queue.sqlite3'); assert c.execute('SELECT status FROM tasks WHERE id=?', ('windows-smoke',)).fetchone()[0] == 'done'"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $backups = @(Get-ChildItem local-state/backups -Filter '*.sqlite3')
           if ($backups.Count -ne 1) { throw 'Expected exactly one SQLite backup' }
