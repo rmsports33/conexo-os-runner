@@ -35,29 +35,6 @@ def enqueue(db, task_id, payload):
                          (task_id, json.dumps(payload, sort_keys=True), now()))
             return conn.execute("SELECT status FROM tasks WHERE id=?", (task_id,)).fetchone()[0]
 
-def claim(db):
-    with closing(connect(db)) as conn:
-        with conn:
-            row = conn.execute("SELECT id,payload FROM tasks WHERE status='pending' ORDER BY updated_at,id LIMIT 1").fetchone()
-            if row is None:
-                return None
-            conn.execute("UPDATE tasks SET status='running',attempts=attempts+1,updated_at=? WHERE id=? AND status='pending'", (now(), row[0]))
-            return {"id": row[0], "payload": json.loads(row[1])}
-
-def finish(db, task_id, success=True):
-    with closing(connect(db)) as conn:
-        with conn:
-            cur = conn.execute("UPDATE tasks SET status=?,updated_at=? WHERE id=? AND status='running'",
-                               ("done" if success else "failed", now(), task_id))
-            return cur.rowcount == 1
-
-def recover(db):
-    """Explicit recovery after a stopped worker; caller decides when safe to retry."""
-    with closing(connect(db)) as conn:
-        with conn:
-            cur = conn.execute("UPDATE tasks SET status='pending',updated_at=? WHERE status='running'", (now(),))
-            return cur.rowcount
-
 def summary(db):
     with closing(connect(db)) as conn:
         return dict(conn.execute("SELECT status,COUNT(*) FROM tasks GROUP BY status").fetchall())
