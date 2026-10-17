@@ -17,6 +17,10 @@ $taskName = 'ConexoOS-LocalRunner'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -File "' + $script + '"')
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes)
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -StartWhenAvailable
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description 'Conexo OS local offline runner (opt-in)' -Force | Out-Null
+$existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+if ($null -ne $existing) {
+    throw "Task $taskName already exists. Refusing to overwrite it; uninstall explicitly first."
+}
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description 'Conexo OS local offline runner (opt-in)' | Out-Null
 Write-Host "Installed $taskName (every $IntervalMinutes minutes)."
 Write-Host 'To disable: powershell -File windows/uninstall-task.ps1'
