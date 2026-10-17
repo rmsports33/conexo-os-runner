@@ -44,6 +44,8 @@ def settle_owned(db, task_id, token, *, result=None, error=None, max_attempts=3)
     with closing(connect(db)) as conn:
         with conn:
             prepare(conn)
+            # Serialize ownership verification and settlement against recovery.
+            conn.execute("BEGIN IMMEDIATE")
             row=conn.execute("""SELECT t.attempts FROM tasks t JOIN task_leases l ON l.task_id=t.id
                 WHERE t.id=? AND t.status='running' AND l.token=?""",(task_id,token)).fetchone()
             if row is None:
