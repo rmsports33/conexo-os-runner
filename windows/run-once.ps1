@@ -21,3 +21,9 @@ $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffffffZ')
 $backup = Join-Path $backups ("queue-$stamp.sqlite3")
 python -m scripts.maintenance --db $db backup $backup
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+# Keep newest 30 verified snapshots. Never delete the active queue.
+$all = @(Get-ChildItem -LiteralPath $backups -File -Filter 'queue-*.sqlite3' | Sort-Object Name -Descending)
+if ($all.Count -gt 30) {
+    $all | Select-Object -Skip 30 | Remove-Item -Force
+}
+exit 0
