@@ -69,21 +69,10 @@ def main():
     p = sub.add_parser("enqueue")
     p.add_argument("id")
     p.add_argument("--payload", default="{}")
-    sub.add_parser("claim")
-    p = sub.add_parser("finish")
-    p.add_argument("id")
-    p.add_argument("--failed", action="store_true")
-    sub.add_parser("recover")
     sub.add_parser("status")
     args = parser.parse_args()
     if args.command == "enqueue":
         result = enqueue(args.db, args.id, json.loads(args.payload))
-    elif args.command == "claim":
-        result = claim(args.db)
-    elif args.command == "finish":
-        result = finish(args.db, args.id, not args.failed)
-    elif args.command == "recover":
-        result = recover(args.db)
     else:
         result = summary(args.db)
     print(json.dumps(result, sort_keys=True))
