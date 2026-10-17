@@ -16,6 +16,7 @@ def acquire(db, owner):
     with closing(connect(db)) as conn:
         with conn:
             prepare(conn)
+            conn.execute("BEGIN IMMEDIATE")
             row = conn.execute("SELECT id,payload FROM tasks WHERE status='pending' ORDER BY updated_at,id LIMIT 1").fetchone()
             if row is None:
                 return None
