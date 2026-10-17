@@ -17,6 +17,7 @@ def recover_stale(db, stale_seconds=3600, max_attempts=3, *, dry_run=True, clock
     with closing(connect(db)) as conn:
         with conn:
             prepare(conn)
+            conn.execute('BEGIN IMMEDIATE')
             rows = conn.execute(
                 """SELECT t.id,t.attempts FROM tasks t LEFT JOIN task_leases l ON l.task_id=t.id
                 WHERE t.status='running' AND COALESCE(l.heartbeat_at,t.updated_at)<=? ORDER BY t.id""",
