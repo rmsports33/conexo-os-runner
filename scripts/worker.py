@@ -1,10 +1,9 @@
-"""Safe offline worker: only built-in, deterministic, side-effect-free task types."""
+"""Safe offline worker with atomic task settlement and bounded retries."""
 import argparse
 import json
 from contextlib import closing
 from pathlib import Path
-
-from scripts.continuity import claim, connect, enqueue, now, summary
+from scripts.continuity import claim, connect, now, summary
 
 MAX_ATTEMPTS = 3
 
@@ -24,50 +23,38 @@ def perform(payload):
         return {"count": len(values)}
     raise ValueError("Unsupported task type")
 
-def record(db, task_id, result=None, error=None):
+def settle(db, task_id, result=None, error=None):
+    """Write result and status in the same transaction; never acknowledge separately."""
     with closing(connect(db)) as conn:
         with conn:
+            row = conn.execute("SELECT status,attempts FROM tasks WHERE id=?", (task_id,)).fetchone()
+            if row is None or row[0] != "running":
+                raise RuntimeError("Task not running")
+            attempts = row[1]
+            state = "done" if error is None else ("pending" if attempts < MAX_ATTEMPTS else "failed")
             conn.execute("""CREATE TABLE IF NOT EXISTS task_results (
-                task_id TEXT PRIMARY KEY,
-                result TEXT,
-                error TEXT,
-                updated_at TEXT NOT NULL
+                task_id TEXT PRIMARY KEY, result TEXT, error TEXT, updated_at TEXT NOT NULL
             )""")
             conn.execute("""INSERT INTO task_results(task_id,result,error,updated_at)
-                VALUES(?,?,?,?)
-                ON CONFLICT(task_id) DO UPDATE SET
-                  result=excluded.result,error=excluded.error,updated_at=excluded.updated_at""",
+                VALUES(?,?,?,?) ON CONFLICT(task_id) DO UPDATE SET
+                result=excluded.result,error=excluded.error,updated_at=excluded.updated_at""",
                 (task_id, json.dumps(result, sort_keys=True) if result is not None else None, error, now()))
-
-def settle(db, task_id, ok, attempts, error=None):
-    with closing(connect(db)) as conn:
-        with conn:
-            if ok:
-                state = "done"
-            elif attempts < MAX_ATTEMPTS:
-                state = "pending"
-            else:
-                state = "failed"
             conn.execute("UPDATE tasks SET status=?,updated_at=? WHERE id=? AND status='running'",
                          (state, now(), task_id))
-    return state
+            return state, attempts
 
 def process_one(db):
     item = claim(db)
     if item is None:
         return None
     task_id = item["id"]
-    with closing(connect(db)) as conn:
-        attempts = conn.execute("SELECT attempts FROM tasks WHERE id=?", (task_id,)).fetchone()[0]
     try:
         result = perform(item["payload"])
     except (ValueError, TypeError) as exc:
         message = str(exc)
-        record(db, task_id, error=message)
-        state = settle(db, task_id, False, attempts, message)
+        state, attempts = settle(db, task_id, error=message)
         return {"id": task_id, "status": state, "attempts": attempts, "error": message}
-    record(db, task_id, result=result)
-    state = settle(db, task_id, True, attempts)
+    state, attempts = settle(db, task_id, result=result)
     return {"id": task_id, "status": state, "attempts": attempts, "result": result}
 
 def run(db, limit=10):
