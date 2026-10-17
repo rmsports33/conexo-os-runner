@@ -30,6 +30,12 @@ if ($all.Count -gt 30) {
 $workspace = (Resolve-Path (Join-Path (Get-Location) "..")).Path
 $moduleReport = Join-Path $state "modules-latest.json"
 python -m scripts.module_inventory --workspace $workspace --output $moduleReport
+if ($LASTEXITCODE -eq 0) {
+    python -m scripts.module_history --report $moduleReport --history (Join-Path $state "modules-history.jsonl") --changes (Join-Path $state "modules-changes.json")
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Module history failed; queue maintenance completed."
+    }
+}
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "Module inventory failed; queue maintenance completed."
 }
