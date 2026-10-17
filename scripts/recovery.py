@@ -26,13 +26,13 @@ def recover_stale(db, stale_seconds=3600, max_attempts=3, *, dry_run=True, clock
             if not dry_run:
                 for task_id in retry:
                     conn.execute(
-                        "UPDATE tasks SET status='pending',updated_at=? WHERE id=? AND status='running' AND updated_at<=?",
-                        (now(), task_id, cutoff))
+                        "UPDATE tasks SET status='pending',updated_at=? WHERE id=? AND status='running' ",
+                        (now(), task_id))
                     conn.execute("DELETE FROM task_leases WHERE task_id=?", (task_id,))
                 for task_id in exhausted:
                     conn.execute(
-                        "UPDATE tasks SET status='failed',updated_at=? WHERE id=? AND status='running' AND updated_at<=?",
-                        (now(), task_id, cutoff))
+                        "UPDATE tasks SET status='failed',updated_at=? WHERE id=? AND status='running' ",
+                        (now(), task_id))
     return {"dry_run": dry_run, "retry": retry, "exhausted": exhausted}
 
 def main():
