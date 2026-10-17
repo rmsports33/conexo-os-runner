@@ -2,9 +2,8 @@
 import argparse
 import json
 import uuid
-from contextlib import closing
 from pathlib import Path
-from scripts.continuity import connect, now, summary
+from scripts.continuity import summary
 from scripts.ownership import acquire, settle_owned
 
 MAX_ATTEMPTS = 3
@@ -24,26 +23,6 @@ def perform(payload):
             raise ValueError("Count requires a list with at most 1000 items")
         return {"count": len(values)}
     raise ValueError("Unsupported task type")
-
-def settle(db, task_id, result=None, error=None):
-    """Write result and status in the same transaction; never acknowledge separately."""
-    with closing(connect(db)) as conn:
-        with conn:
-            row = conn.execute("SELECT status,attempts FROM tasks WHERE id=?", (task_id,)).fetchone()
-            if row is None or row[0] != "running":
-                raise RuntimeError("Task not running")
-            attempts = row[1]
-            state = "done" if error is None else ("pending" if attempts < MAX_ATTEMPTS else "failed")
-            conn.execute("""CREATE TABLE IF NOT EXISTS task_results (
-                task_id TEXT PRIMARY KEY, result TEXT, error TEXT, updated_at TEXT NOT NULL
-            )""")
-            conn.execute("""INSERT INTO task_results(task_id,result,error,updated_at)
-                VALUES(?,?,?,?) ON CONFLICT(task_id) DO UPDATE SET
-                result=excluded.result,error=excluded.error,updated_at=excluded.updated_at""",
-                (task_id, json.dumps(result, sort_keys=True) if result is not None else None, error, now()))
-            conn.execute("UPDATE tasks SET status=?,updated_at=? WHERE id=? AND status='running'",
-                         (state, now(), task_id))
-            return state, attempts
 
 def process_one(db):
     owner = "worker-" + uuid.uuid4().hex
