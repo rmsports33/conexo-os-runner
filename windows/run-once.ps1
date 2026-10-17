@@ -20,4 +20,4 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffffffZ')
 $backup = Join-Path $backups ("queue-$stamp.sqlite3")
 python -m scripts.maintenance --db $db backup $backup
-exit $LASTEXITCODE
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
