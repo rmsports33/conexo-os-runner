@@ -14,8 +14,6 @@ Example on a trusted local machine:
 
 ```bash
 python scripts/continuity.py --db local-state/queue.sqlite3 enqueue demo-1 --payload '{"demo":true}'
-python scripts/continuity.py --db local-state/queue.sqlite3 claim
-python scripts/continuity.py --db local-state/queue.sqlite3 finish demo-1
 python scripts/continuity.py --db local-state/queue.sqlite3 status
 ```
 
@@ -40,7 +38,7 @@ python -m scripts.worker --db local-state/queue.sqlite3 --limit 10
 python scripts/continuity.py --db local-state/queue.sqlite3 status
 ```
 
-The worker has a bounded 3-attempt retry policy. Failed tasks remain marked `failed` after the limit. Recovery of tasks left in `running` remains explicitly controlled by `continuity.py recover`. Do not run recovery concurrently with an active worker. SQLite and result records must be stored on a persistent machine or volume; hosted GitHub Actions runners do not provide durable queue storage. This is a test prototype, not a production task scheduler.
+The worker has a bounded 3-attempt retry policy. Failed tasks remain marked `failed` after the limit. Recovery of stale tasks is previewed with `python -m scripts.recovery --db local-state/queue.sqlite3`. Applying recovery requires an explicit `--apply` and must not overlap active workers. SQLite and result records must be stored on a persistent machine or volume; hosted GitHub Actions runners do not provide durable queue storage. This is a test prototype, not a production task scheduler.
 
 ## SQLite maintenance and backups
 
@@ -57,3 +55,15 @@ python -m scripts.maintenance --db local-state/queue.sqlite3 backup local-state/
 ```
 
 The backup uses SQLite's online backup API and verifies the resulting database. Store backups on durable media with suitable access controls. This prototype does **not** schedule backups, rotate old snapshots, restore databases, or provide cross-device synchronization. Do not commit SQLite files to this public repository.
+
+## Optional Windows scheduler (not installed automatically)
+
+Requires Windows PowerShell, Python 3.12+ on PATH, a local checkout and persistent storage. Review the scripts before enabling. From the repository root:
+
+```powershell
+powershell -NoProfile -File windows/run-once.ps1
+powershell -NoProfile -File windows/install-task.ps1
+powershell -NoProfile -File windows/uninstall-task.ps1
+```
+
+The scheduled task runs every 60 minutes by default, only when the Windows host is available. It does not grant elevated permissions or install a background cloud worker. The maintenance cycle previews recovery but does not apply it. Backups accumulate until manually managed; ensure free disk space. Only synthetic `echo` and `count` tasks are supported. Run the test suite before opting in; this is not production-ready and does not synchronize across devices.
