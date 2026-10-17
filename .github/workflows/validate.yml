@@ -94,3 +94,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -c "import sqlite3; c=sqlite3.connect('local-state/restored.sqlite3'); assert c.execute('SELECT status FROM tasks WHERE id=?', ('windows-smoke',)).fetchone()[0] == 'done'"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check backup retention limit
+        shell: pwsh
+        run: |
+          1..32 | ForEach-Object {
+            $name = 'queue-{0:D8}.sqlite3' -f $_
+            New-Item -ItemType File -Path (Join-Path 'local-state/backups' $name) | Out-Null
+          }
+          powershell -NoProfile -File windows/run-once.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $backups = @(Get-ChildItem local-state/backups -Filter 'queue-*.sqlite3')
+          if ($backups.Count -ne 30) { throw "Expected 30 retained backups, found $($backups.Count)" }
