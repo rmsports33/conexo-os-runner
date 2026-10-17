@@ -26,4 +26,11 @@ $all = @(Get-ChildItem -LiteralPath $backups -File -Filter 'queue-*.sqlite3' | S
 if ($all.Count -gt 30) {
     $all | Select-Object -Skip 30 | Remove-Item -Force
 }
+# Offline module supervision.
+$workspace = (Resolve-Path (Join-Path (Get-Location) "..")).Path
+$moduleReport = Join-Path $state "modules-latest.json"
+python -m scripts.module_inventory --workspace $workspace --output $moduleReport
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Module inventory failed; queue maintenance completed."
+}
 exit 0
