@@ -5,6 +5,7 @@ from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from scripts.continuity import connect, now
+from scripts.ownership import prepare
 
 def recover_stale(db, stale_seconds=3600, max_attempts=3, *, dry_run=True, clock=None):
     if stale_seconds < 60 or max_attempts < 1:
@@ -15,8 +16,10 @@ def recover_stale(db, stale_seconds=3600, max_attempts=3, *, dry_run=True, clock
     cutoff = (current - timedelta(seconds=stale_seconds)).isoformat()
     with closing(connect(db)) as conn:
         with conn:
+            prepare(conn)
             rows = conn.execute(
-                "SELECT id,attempts FROM tasks WHERE status='running' AND updated_at<=? ORDER BY id",
+                """SELECT t.id,t.attempts FROM tasks t LEFT JOIN task_leases l ON l.task_id=t.id
+                WHERE t.status='running' AND COALESCE(l.heartbeat_at,t.updated_at)<=? ORDER BY t.id""",
                 (cutoff,)).fetchall()
             retry = [task_id for task_id, attempts in rows if attempts < max_attempts]
             exhausted = [task_id for task_id, attempts in rows if attempts >= max_attempts]
@@ -25,6 +28,7 @@ def recover_stale(db, stale_seconds=3600, max_attempts=3, *, dry_run=True, clock
                     conn.execute(
                         "UPDATE tasks SET status='pending',updated_at=? WHERE id=? AND status='running' AND updated_at<=?",
                         (now(), task_id, cutoff))
+                    conn.execute("DELETE FROM task_leases WHERE task_id=?", (task_id,))
                 for task_id in exhausted:
                     conn.execute(
                         "UPDATE tasks SET status='failed',updated_at=? WHERE id=? AND status='running' AND updated_at<=?",
