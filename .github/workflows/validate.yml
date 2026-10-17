@@ -105,3 +105,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $backups = @(Get-ChildItem local-state/backups -Filter 'queue-*.sqlite3')
           if ($backups.Count -ne 30) { throw "Expected 30 retained backups, found $($backups.Count)" }
+          $newest = $backups | Sort-Object Name -Descending | Select-Object -First 1
+          python -m scripts.maintenance --db $newest.FullName check
+          if ($LASTEXITCODE -ne 0) { throw 'Newest retained backup is not valid' }
