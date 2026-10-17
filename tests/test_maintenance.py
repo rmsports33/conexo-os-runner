@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from scripts.continuity import enqueue
 from scripts.ownership import acquire
-from scripts.maintenance import backup, check
+from scripts.maintenance import backup, check, restore
 
 class MaintenanceTests(unittest.TestCase):
     def setUp(self):
@@ -20,6 +20,22 @@ class MaintenanceTests(unittest.TestCase):
         result = backup(self.db, self.destination)
         self.assertEqual(result["integrity"], "ok")
         self.assertEqual(check(self.destination)["queue"], {"running": 1})
+
+    def test_restore_preserves_data_and_refuses_overwrite(self):
+        enqueue(self.db, "restore-demo", {"type": "echo", "value": "saved"})
+        backup(self.db, self.destination)
+        restored = Path(self.tmp.name) / "restored" / "queue.sqlite3"
+        result = restore(self.destination, restored)
+        self.assertEqual(result["integrity"], "ok")
+        self.assertEqual(check(restored)["queue"], {"pending": 1})
+        with self.assertRaises(FileExistsError):
+            restore(self.destination, restored)
+
+    def test_restore_missing_source(self):
+        restored = Path(self.tmp.name) / "restored.sqlite3"
+        with self.assertRaises(FileNotFoundError):
+            restore(self.destination, restored)
+        self.assertFalse(restored.exists())
 
     def test_backup_never_overwrites(self):
         enqueue(self.db, "demo", {})
