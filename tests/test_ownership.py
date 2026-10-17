@@ -1,4 +1,5 @@
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from pathlib import Path
 from scripts.continuity import enqueue, summary
@@ -50,6 +51,14 @@ class OwnershipTests(unittest.TestCase):
         self.assertTrue(heartbeat(self.db, "alive", first["token"]))
         self.assertEqual(recover_stale(self.db, dry_run=False)["retry"], [])
         self.assertTrue(complete(self.db, "alive", first["token"], {"ok": True}))
+
+    def test_concurrent_claims_are_exclusive(self):
+        enqueue(self.db, "single", {"type": "echo", "value": 1})
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(lambda i: acquire(self.db, "worker-" + str(i)), range(8)))
+        claimed = [item for item in results if item is not None]
+        self.assertEqual(len(claimed), 1)
+        self.assertEqual(claimed[0]["id"], "single")
 
     def test_missing_owner_rejected(self):
         with self.assertRaises(ValueError):
