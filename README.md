@@ -54,7 +54,7 @@ Create a consistent snapshot (destination must not already exist):
 python -m scripts.maintenance --db local-state/queue.sqlite3 backup local-state/backups/queue-001.sqlite3
 ```
 
-The backup uses SQLite's online backup API and verifies the resulting database. Store backups on durable media with suitable access controls. This prototype does **not** schedule backups, rotate old snapshots, restore databases, or provide cross-device synchronization. Do not commit SQLite files to this public repository.
+The backup uses SQLite's online backup API and verifies the resulting database. Store backups on durable media with suitable access controls. On Windows, the opt-in local cycle creates a verified backup and retains the 30 newest matching snapshots. Restore to a new path with `python -m scripts.maintenance restore SOURCE DESTINATION`; restoration never overwrites an existing destination. Cross-device synchronization is not provided. Do not commit SQLite files to this public repository.
 
 ## Optional Windows scheduler (not installed automatically)
 
@@ -66,4 +66,4 @@ powershell -NoProfile -File windows/install-task.ps1
 powershell -NoProfile -File windows/uninstall-task.ps1
 ```
 
-The scheduled task runs every 60 minutes by default, only when the Windows host is available. It does not grant elevated permissions or install a background cloud worker. The maintenance cycle previews recovery but does not apply it. Backups accumulate until manually managed; ensure free disk space. Only synthetic `echo` and `count` tasks are supported. Run the test suite before opting in; this is not production-ready and does not synchronize across devices.
+The scheduled task runs every 60 minutes by default, only when the Windows host is available. It does not grant elevated permissions or install a background cloud worker. The maintenance cycle previews recovery but does not apply it. The Windows cycle retains the 30 newest matching snapshots after a successful backup; ensure adequate free disk space. Only synthetic `echo` and `count` tasks are supported. The installer runs the test suite before scheduling. For a controlled local pilot, first run `windows/run-once.ps1` manually and check `python -m scripts.maintenance --db local-state/queue.sqlite3 check` if a database exists. Schedule only with explicit opt-in; uninstalling the task preserves the database and backups. This is not production-ready and does not synchronize across devices.
