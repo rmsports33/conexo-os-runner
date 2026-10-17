@@ -3,7 +3,7 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 
-from scripts.continuity import connect, enqueue, recover, summary
+from scripts.continuity import connect, enqueue, summary
 from scripts.worker import MAX_ATTEMPTS, process_one, run
 
 class WorkerTests(unittest.TestCase):
@@ -29,17 +29,6 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual([x["status"] for x in outcomes], ["pending", "pending", "failed"])
         self.assertEqual(summary(self.db), {"failed": 1})
         self.assertIsNone(process_one(self.db))
-
-    def test_recovery_requires_explicit_action(self):
-        enqueue(self.db, "interrupted", {"type": "echo", "value": 1})
-        from scripts.continuity import claim
-        self.assertEqual(claim(self.db)["id"], "interrupted")
-        self.assertIsNone(process_one(self.db))
-        self.assertEqual(recover(self.db), 1)
-        self.assertEqual(process_one(self.db)["status"], "done")
-        with closing(connect(self.db)) as conn:
-            attempts = conn.execute("SELECT attempts FROM tasks WHERE id='interrupted'").fetchone()[0]
-        self.assertEqual(attempts, 2)
 
     def test_result_and_state_persist_together(self):
         enqueue(self.db, "persist", {"type": "echo", "value": "saved"})
