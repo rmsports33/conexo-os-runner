@@ -29,3 +29,15 @@ python scripts/validate.py samples
 ```
 
 Do not add credentials, internal data, private source files or proprietary configuration.
+
+## Safe worker prototype
+
+The public offline worker accepts only two synthetic task types: `{"type":"echo","value":"hello"}` and `{"type":"count","items":[1,2,3]}`. Unknown types are rejected. It does not run shell commands, access networks, publish content or load secrets.
+
+```bash
+python scripts/continuity.py --db local-state/queue.sqlite3 enqueue demo --payload '{"type":"echo","value":"hello"}'
+python -m scripts.worker --db local-state/queue.sqlite3 --limit 10
+python scripts/continuity.py --db local-state/queue.sqlite3 status
+```
+
+The worker has a bounded 3-attempt retry policy. Failed tasks remain marked `failed` after the limit. Recovery of tasks left in `running` remains explicitly controlled by `continuity.py recover`. Do not run recovery concurrently with an active worker. SQLite and result records must be stored on a persistent machine or volume; hosted GitHub Actions runners do not provide durable queue storage. This is a test prototype, not a production task scheduler.
