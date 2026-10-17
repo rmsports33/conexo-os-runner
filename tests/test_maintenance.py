@@ -1,7 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from scripts.continuity import enqueue, claim
+from scripts.continuity import enqueue
+from scripts.ownership import acquire
 from scripts.maintenance import backup, check
 
 class MaintenanceTests(unittest.TestCase):
@@ -15,7 +16,7 @@ class MaintenanceTests(unittest.TestCase):
 
     def test_backup_preserves_queue(self):
         enqueue(self.db, "demo", {"type": "echo", "value": 1})
-        claim(self.db)
+        acquire(self.db, 'maintenance-test')
         result = backup(self.db, self.destination)
         self.assertEqual(result["integrity"], "ok")
         self.assertEqual(check(self.destination)["queue"], {"running": 1})
