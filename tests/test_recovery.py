@@ -3,7 +3,8 @@ import unittest
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from scripts.continuity import claim, connect, enqueue, summary
+from scripts.continuity import connect, enqueue, summary
+from scripts.ownership import acquire
 from scripts.recovery import recover_stale
 
 class RecoveryTests(unittest.TestCase):
@@ -23,7 +24,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_dry_run_does_not_modify(self):
         enqueue(self.db, "a", {})
-        claim(self.db)
+        acquire(self.db, 'recovery-test')
         self.age("a")
         result = recover_stale(self.db, clock=self.clock)
         self.assertEqual(result["retry"], ["a"])
@@ -32,7 +33,7 @@ class RecoveryTests(unittest.TestCase):
     def test_apply_only_stale_tasks(self):
         for name in ("old", "fresh"):
             enqueue(self.db, name, {})
-            claim(self.db)
+            acquire(self.db, 'recovery-test')
         self.age("old")
         self.age("fresh", seconds=30)
         result = recover_stale(self.db, clock=self.clock, dry_run=False)
@@ -41,7 +42,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_exhausted_goes_to_failed(self):
         enqueue(self.db, "maxed", {})
-        claim(self.db)
+        acquire(self.db, 'recovery-test')
         self.age("maxed", attempts=3)
         result = recover_stale(self.db, clock=self.clock, dry_run=False)
         self.assertEqual(result["exhausted"], ["maxed"])
