@@ -41,6 +41,15 @@ class WorkerTests(unittest.TestCase):
             attempts = conn.execute("SELECT attempts FROM tasks WHERE id='interrupted'").fetchone()[0]
         self.assertEqual(attempts, 2)
 
+    def test_result_and_state_persist_together(self):
+        enqueue(self.db, "persist", {"type": "echo", "value": "saved"})
+        self.assertEqual(process_one(self.db)["status"], "done")
+        with closing(connect(self.db)) as conn:
+            status = conn.execute("SELECT status FROM tasks WHERE id='persist'").fetchone()[0]
+            saved = conn.execute("SELECT result,error FROM task_results WHERE task_id='persist'").fetchone()
+        self.assertEqual(status, "done")
+        self.assertEqual(saved, ('{"echo": "saved"}', None))
+
     def test_limit(self):
         with self.assertRaises(ValueError):
             run(self.db, 0)
