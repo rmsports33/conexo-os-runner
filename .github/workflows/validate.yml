@@ -43,3 +43,37 @@ jobs:
             echo "- UTC: $(date -u +'%Y-%m-%d %H:%M:%S')"
             echo '- Scope: public files only; no secrets or private repository access'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  windows-smoke:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Checkout public repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Parse Windows scripts
+        shell: pwsh
+        run: |
+          $files = @('windows/run-once.ps1', 'windows/install-task.ps1', 'windows/uninstall-task.ps1')
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw "$file has PowerShell parse errors: $errors" }
+          }
+      - name: Run offline queue smoke test
+        shell: pwsh
+        run: |
+          python -m scripts.continuity --db local-state/queue.sqlite3 enqueue windows-smoke --payload '{"type":"echo","value":"ok"}'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -File windows/run-once.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m scripts.maintenance --db local-state/queue.sqlite3 check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $backups = @(Get-ChildItem local-state/backups -Filter '*.sqlite3')
+          if ($backups.Count -ne 1) { throw 'Expected exactly one SQLite backup' }
