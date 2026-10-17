@@ -66,6 +66,15 @@ jobs:
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
             if ($errors.Count -gt 0) { throw "$file has PowerShell parse errors: $errors" }
           }
+      - name: Verify Windows installer preflight does not register tasks
+        shell: pwsh
+        run: |
+          $source = Get-Content windows/install-task.ps1 -Raw
+          if ($source -notmatch 'unittest discover') { throw 'Installer must run unit tests before registering task' }
+          if ($source -notmatch 'version_info') { throw 'Installer must check Python version' }
+          $preflight = $source.IndexOf('unittest discover')
+          $register = $source.IndexOf('Register-ScheduledTask')
+          if ($preflight -lt 0 -or $register -le $preflight) { throw 'Preflight must precede registration' }
       - name: Run offline queue smoke test
         shell: pwsh
         run: |
