@@ -41,3 +41,19 @@ python scripts/continuity.py --db local-state/queue.sqlite3 status
 ```
 
 The worker has a bounded 3-attempt retry policy. Failed tasks remain marked `failed` after the limit. Recovery of tasks left in `running` remains explicitly controlled by `continuity.py recover`. Do not run recovery concurrently with an active worker. SQLite and result records must be stored on a persistent machine or volume; hosted GitHub Actions runners do not provide durable queue storage. This is a test prototype, not a production task scheduler.
+
+## SQLite maintenance and backups
+
+Run an integrity check on a trusted persistent host:
+
+```bash
+python -m scripts.maintenance --db local-state/queue.sqlite3 check
+```
+
+Create a consistent snapshot (destination must not already exist):
+
+```bash
+python -m scripts.maintenance --db local-state/queue.sqlite3 backup local-state/backups/queue-001.sqlite3
+```
+
+The backup uses SQLite's online backup API and verifies the resulting database. Store backups on durable media with suitable access controls. This prototype does **not** schedule backups, rotate old snapshots, restore databases, or provide cross-device synchronization. Do not commit SQLite files to this public repository.
