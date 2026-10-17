@@ -1,9 +1,11 @@
 """Safe offline worker with atomic task settlement and bounded retries."""
 import argparse
 import json
+import uuid
 from contextlib import closing
 from pathlib import Path
-from scripts.continuity import claim, connect, now, summary
+from scripts.continuity import connect, now, summary
+from scripts.ownership import acquire, settle_owned
 
 MAX_ATTEMPTS = 3
 
@@ -44,17 +46,24 @@ def settle(db, task_id, result=None, error=None):
             return state, attempts
 
 def process_one(db):
-    item = claim(db)
+    owner = "worker-" + uuid.uuid4().hex
+    item = acquire(db, owner)
     if item is None:
         return None
-    task_id = item["id"]
+    task_id, token = item["id"], item["token"]
     try:
         result = perform(item["payload"])
     except (ValueError, TypeError) as exc:
         message = str(exc)
-        state, attempts = settle(db, task_id, error=message)
+        settled = settle_owned(db, task_id, token, error=message, max_attempts=MAX_ATTEMPTS)
+        if settled is None:
+            raise RuntimeError("Task ownership lost before failure settlement")
+        state, attempts = settled
         return {"id": task_id, "status": state, "attempts": attempts, "error": message}
-    state, attempts = settle(db, task_id, result=result)
+    settled = settle_owned(db, task_id, token, result=result, max_attempts=MAX_ATTEMPTS)
+    if settled is None:
+        raise RuntimeError("Task ownership lost before completion")
+    state, attempts = settled
     return {"id": task_id, "status": state, "attempts": attempts, "result": result}
 
 def run(db, limit=10):
