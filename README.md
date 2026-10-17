@@ -58,7 +58,7 @@ The backup uses SQLite's online backup API and verifies the resulting database. 
 
 ## Optional Windows scheduler (not installed automatically)
 
-Requires Windows PowerShell, Python 3.12+ on PATH, a local checkout and persistent storage. Review the scripts before enabling. From the repository root:
+Requires Windows PowerShell, Python 3.12+ on PATH, a local checkout and persistent storage. Review the scripts before enabling. The installer refuses to replace an existing scheduled task with the same name. From the repository root:
 
 ```powershell
 powershell -NoProfile -File windows/run-once.ps1
