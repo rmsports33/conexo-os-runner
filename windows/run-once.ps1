@@ -12,8 +12,8 @@ if (-not (Test-Path $db)) {
 }
 python -m scripts.maintenance --db $db check
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-# Dry-run only. Never automatically reclaim live or unknown workers.
-python -m scripts.recovery --db $db --stale-seconds 3600
+# Atomic recovery of stale synthetic tasks only; unsafe task types remain untouched.
+python -m scripts.safe_recovery --db $db --stale-seconds 3600 --max-attempts 3 --apply
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 python -m scripts.worker --db $db --limit 10
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
