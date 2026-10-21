@@ -22,11 +22,25 @@ def recover_safe(db, stale_seconds=3600, max_attempts=3, *, apply=False, clock=N
     cutoff = (current - timedelta(seconds=stale_seconds)).isoformat()
     with closing(connect(Path(db))) as conn:
         with conn:
-            prepare(conn)
+            # M04.17: em dry-run NAO se cria schema. A tabela task_leases e
+            # obrigatoria para o LEFT JOIN, por isso a sua ausencia e tratada
+            # como "nenhum lease" (fonte de verdade = tasks.updated_at).
+            if not apply:
+                has_leases = conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='task_leases'"
+                ).fetchone() is not None
+                if not has_leases:
+                    conn.execute("CREATE TEMP VIEW _task_leases AS SELECT NULL AS task_id, NULL AS heartbeat_at WHERE 0")
+                    lease_src = "_task_leases"
+                else:
+                    lease_src = "task_leases"
+            else:
+                prepare(conn)
+                lease_src = "task_leases"
             conn.execute("BEGIN IMMEDIATE")
             rows = conn.execute(
-                """SELECT t.id, t.payload, t.attempts FROM tasks t
-                LEFT JOIN task_leases l ON l.task_id=t.id
+                f"""SELECT t.id, t.payload, t.attempts FROM tasks t
+                LEFT JOIN {lease_src} l ON l.task_id=t.id
                 WHERE t.status='running'
                   AND COALESCE(l.heartbeat_at,t.updated_at)<=?
                 ORDER BY t.id""", (cutoff,)
