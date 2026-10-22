@@ -59,7 +59,19 @@ jobs:
       - name: Parse Windows scripts
         shell: pwsh
         run: |
-          $files = @('windows/run-once.ps1', 'windows/install-task.ps1', 'windows/uninstall-task.ps1')
+          $files = @(
+            'windows/run-once.ps1',
+            'windows/install-task.ps1',
+            'windows/uninstall-task.ps1',
+            'windows/conexo-autoops-check.ps1',
+            'windows/conexo-queue-worker.ps1',
+            'windows/conexo-task-executor.ps1',
+            'windows/conexo-watchdog.ps1',
+            'windows/conexo-recovery-policy-m0333.ps1',
+            'windows/conexo-sync.ps1',
+            'windows/conexo-m0311-prepare.ps1',
+            'windows/conexo-portable-local-sync.ps1'
+          )
           foreach ($file in $files) {
             $tokens = $null
             $errors = $null
