@@ -33,6 +33,17 @@ jobs:
           paths = os.environ["TEST_PATHS"].split()
           if not paths or len(paths) > 30:
               raise SystemExit("Invalid test count")
+          approved = {
+            "tests/test_m058_cobertura_literal_regex.py",
+            "tests/test_m05_c19_produtor_evidencias.py",
+            "tests/test_m056_adaptador_contrato_editorial.py",
+            "tests/test_m055_vendor_contract_boundary.py",
+            "tests/test_m05_c19_rss_gate_source.py",
+            "tests/test_m052b_no_wp_publish.py",
+            "tests/test_m05_c19_evidence_adapter.py",
+          }
+          if len(paths) != len(set(paths)) or set(paths) != approved:
+              raise SystemExit("Test selection differs from reviewed allowlist")
           for path in paths:
               p = pathlib.PurePosixPath(path)
               if not (path.startswith("tests/test_") and path.endswith(".py")
