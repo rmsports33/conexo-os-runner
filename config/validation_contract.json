@@ -2,7 +2,7 @@
   "schema_version": 1,
   "mode": "offline-validation",
   "execute_commands_from_queue": false,
-  "network_during_tests": false,
+  "network_during_tests": "not_enforced",
   "allow_secrets": false,
   "modules": {
     "mkt-rss": {
