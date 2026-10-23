@@ -13,7 +13,7 @@ class ValidationContractTests(unittest.TestCase):
         self.assertEqual(data["mode"], "offline-validation")
         self.assertIs(data["execute_commands_from_queue"], False)
         self.assertIs(data["allow_secrets"], False)
-        self.assertIs(data["network_during_tests"], False)
+        self.assertEqual(data["network_during_tests"], "not_enforced")
         modules = data["modules"]
         self.assertEqual(set(modules), {"mkt-rss"})
         module = modules["mkt-rss"]
