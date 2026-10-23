@@ -2,7 +2,7 @@
   "schema_version": 1,
   "mode": "offline-validation",
   "execute_commands_from_queue": false,
-  "network_during_tests": false,
+  "network_during_tests": "not_enforced",
   "allow_secrets": false,
   "modules": {
     "mkt-rss": {
@@ -16,7 +16,12 @@
         "tests/test_m052b_no_wp_publish.py",
         "tests/test_m05_c19_evidence_adapter.py"
       ],
-      "required": ["no-wordpress", "editorial-contract-v1", "literal-claims"]
+      "required": [
+        "no-wordpress",
+        "editorial-contract-v1",
+        "literal-claims"
+      ]
     }
-  }
+  },
+  "network_policy": "Tests must not make external calls; workflow does not provide network isolation"
 }
