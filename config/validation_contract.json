@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "mode": "offline-validation",
+  "execute_commands_from_queue": false,
+  "network_during_tests": "not_enforced",
+  "allow_secrets": false,
+  "modules": {
+    "mkt-rss": {
+      "repository": "rmsports33/MKT-RSS",
+      "test_paths": [
+        "tests/test_m058_cobertura_literal_regex.py",
+        "tests/test_m05_c19_produtor_evidencias.py",
+        "tests/test_m056_adaptador_contrato_editorial.py",
+        "tests/test_m055_vendor_contract_boundary.py",
+        "tests/test_m05_c19_rss_gate_source.py",
+        "tests/test_m052b_no_wp_publish.py",
+        "tests/test_m05_c19_evidence_adapter.py"
+      ],
+      "required": [
+        "no-wordpress",
+        "editorial-contract-v1",
+        "literal-claims"
+      ]
+    }
+  }
+}
