@@ -2,7 +2,7 @@
   "schema_version": 1,
   "mode": "offline-validation",
   "execute_commands_from_queue": false,
-  "network_during_tests": "not_enforced",
+  "network_during_tests": false,
   "allow_secrets": false,
   "modules": {
     "mkt-rss": {
@@ -22,6 +22,5 @@
         "literal-claims"
       ]
     }
-  },
-  "network_policy": "Tests must not make external calls; workflow does not provide network isolation"
+  }
 }
