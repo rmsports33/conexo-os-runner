@@ -45,7 +45,7 @@ aleatorio exclusivo sob TemporaryDirectory do teste, com preview.html,
 validation.json e delivery-plan.json. Bloqueios produzem somente relatorio.
 HTML usa CSP sem recursos externos e sem scripts; o plano nao e pagina a abrir.
 
-Requer Python 3.12+. O import requests do publisher e substituido no filho
+Python efetivamente validado: 3.14.7. Outras versões não foram testadas. O import requests do publisher e substituido no filho
 por capacidade bloqueada, sem inicializar HTTP. Nenhuma dependencia e instalada. Os checkouts
 atualizados devem estar presentes; a copia antiga aninhada nao e alterada.
 
@@ -61,3 +61,23 @@ Execute na raiz do runner:
 A demonstracao cria sua propria SQLite, chama process_one do worker e imprime
 os caminhos. Seu TemporaryDirectory exclusivo fica retido para revisao humana.
 Testes normais removem seus temporarios. Nunca use run-once ou a fila ativa.
+
+## Reprodução verificada e limites
+
+- Runner: `b7984df37b248a04924ef04b39e9e1dbd8726993`.
+- Redator: `5778a47daaf75b6d01a7ed5921279c8ed55e6190`, branch `fix/m0419-r2-escopo-precos`.
+- MKT-RSS: `55f79f46706a446915e9ff0bbe3507289199c87c`, branch `fix/m05-c19-rss-failclosed`.
+- Python efetivamente validado: **3.14.7**. Outras versões não foram testadas.
+
+Os caminhos locais são configuráveis; informe os checkouts por `--redactor`
+e `--mkt` (ou pelas variáveis de configuração dos testes descritas acima).
+A consulta direcionada encontrou os componentes necessários versionados e sem
+alterações locais nos caminhos examinados. Isso não constitui auditoria geral
+dos checkouts. Reprodução em outro computador ainda não executada.
+
+Prévia sintética offline, sem autorização para publicação.
+
+## Próxima entrega proposta
+
+Prévia com evidências reais revisadas, preservando os gates e o bloqueio
+de publicação; ainda não implementada.
