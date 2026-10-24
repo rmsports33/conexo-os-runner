@@ -1,3 +1,4 @@
+$env:CONEXO_MEMORY_REPOS = @((Join-Path $HOME 'conexo-os'),(Join-Path $HOME 'conexo-os-runner'),(Join-Path $HOME 'MKT-RSS')) -join [IO.Path]::PathSeparator
 # Conexo OS runner: one safe, local, offline maintenance cycle.
 # Run from repository root. Requires Python 3.12+ on PATH.
 $ErrorActionPreference = 'Stop'

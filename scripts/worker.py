@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 from scripts.continuity import summary
 from scripts.ownership import acquire, settle_owned
+from scripts.memory_check import check_memory
 
 MAX_ATTEMPTS = 3
 
@@ -22,6 +23,8 @@ def perform(payload):
         if not isinstance(values, list) or len(values) > 1000:
             raise ValueError("Count requires a list with at most 1000 items")
         return {"count": len(values)}
+    if kind == "memory_check":
+        return check_memory(payload)
     raise ValueError("Unsupported task type")
 
 def process_one(db):
