@@ -5,10 +5,11 @@ import uuid
 from pathlib import Path
 from scripts.continuity import summary
 from scripts.ownership import acquire, settle_owned
+from scripts.memory_check import check_memory
 
 MAX_ATTEMPTS = 3
 
-def perform(payload):
+def perform(payload, *, preview_config=None):
     if not isinstance(payload, dict):
         raise ValueError("Payload must be an object")
     kind = payload.get("type")
@@ -22,16 +23,21 @@ def perform(payload):
         if not isinstance(values, list) or len(values) > 1000:
             raise ValueError("Count requires a list with at most 1000 items")
         return {"count": len(values)}
+    if kind == "editorial_preview":
+        from scripts.editorial_preview import preview
+        return preview(payload, preview_config)
+    if kind == "memory_check":
+        return check_memory(payload)
     raise ValueError("Unsupported task type")
 
-def process_one(db):
+def process_one(db, *, preview_config=None):
     owner = "worker-" + uuid.uuid4().hex
     item = acquire(db, owner)
     if item is None:
         return None
     task_id, token = item["id"], item["token"]
     try:
-        result = perform(item["payload"])
+        result = perform(item["payload"], preview_config=preview_config)
     except (ValueError, TypeError) as exc:
         message = str(exc)
         settled = settle_owned(db, task_id, token, error=message, max_attempts=MAX_ATTEMPTS)
@@ -45,12 +51,12 @@ def process_one(db):
     state, attempts = settled
     return {"id": task_id, "status": state, "attempts": attempts, "result": result}
 
-def run(db, limit=10):
+def run(db, limit=10, *, preview_config=None):
     if not 1 <= limit <= 100:
         raise ValueError("Limit must be 1..100")
     processed = []
     for _ in range(limit):
-        item = process_one(db)
+        item = process_one(db, preview_config=preview_config)
         if item is None:
             break
         processed.append(item)
