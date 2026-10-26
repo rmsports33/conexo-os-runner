@@ -1,0 +1,72 @@
+name: Editorial integration (manual, private read-only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  editorial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout runner PR commit (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rmsports33/conexo-os-runner
+          ref: 2cdf279d857a99f65eade1199e7d9e5d7167e4df
+          path: runner
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Generate narrowly scoped redactor read token
+        id: redactor-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CONEXO_EDITORIAL_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CONEXO_EDITORIAL_APP_PRIVATE_KEY }}
+          owner: rmsports33
+          repositories: bot-redator-artigo
+          permission-contents: read
+
+      - name: Checkout private redactor
+        uses: actions/checkout@v4
+        with:
+          repository: rmsports33/bot-redator-artigo
+          ref: main
+          path: redactor
+          token: ${{ steps.redactor-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Checkout MKT-RSS read-only
+        uses: actions/checkout@v4
+        with:
+          repository: rmsports33/MKT-RSS
+          ref: master
+          path: mkt
+          persist-credentials: false
+
+      - name: Offline editorial regression tests (no skipped suite)
+        shell: bash
+        env:
+          CONEXO_PREVIEW_REDACTOR: ${{ github.workspace }}/redactor
+          CONEXO_PREVIEW_MKT: ${{ github.workspace }}/mkt
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          cd runner
+          python -B - <<'PY'
+          import os, unittest
+          from pathlib import Path
+          assert (Path(os.environ["CONEXO_PREVIEW_REDACTOR"]) / "src/editorial/prices.py").is_file()
+          assert (Path(os.environ["CONEXO_PREVIEW_MKT"]) / "mkt_flow_p0/comparativo_flow.py").is_file()
+          suite = unittest.defaultTestLoader.discover("tests", pattern="test_editorial_preview.py")
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.testsRun == 0 or result.skipped or not result.wasSuccessful():
+              raise SystemExit("Editorial test gate failed: zero tests, skips or failures")
+          PY
