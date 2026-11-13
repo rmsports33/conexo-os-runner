@@ -1,12 +1,6 @@
 name: Public validation
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  schedule:
-    - cron: '17 9 * * *'
 
 permissions:
   contents: read
