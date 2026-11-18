@@ -1,0 +1,63 @@
+name: Conexo OS reusable editorial validation
+on:
+  workflow_call:
+    inputs:
+      test_paths:
+        description: "Fixed list of offline tests; not a shell command"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  editorial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install test runner
+        run: python -m pip install pytest
+      - name: Validate approved test list
+        shell: python
+        env:
+          TEST_PATHS: ${{ inputs.test_paths }}
+        run: |
+          import os
+          import pathlib
+          paths = os.environ["TEST_PATHS"].split()
+          if not paths or len(paths) > 30:
+              raise SystemExit("Invalid test count")
+          approved = {
+            "tests/test_m058_cobertura_literal_regex.py",
+            "tests/test_m05_c19_produtor_evidencias.py",
+            "tests/test_m056_adaptador_contrato_editorial.py",
+            "tests/test_m055_vendor_contract_boundary.py",
+            "tests/test_m05_c19_rss_gate_source.py",
+            "tests/test_m052b_no_wp_publish.py",
+            "tests/test_m05_c19_evidence_adapter.py",
+          }
+          if len(paths) != len(set(paths)) or set(paths) != approved:
+              raise SystemExit("Test selection differs from reviewed allowlist")
+          for path in paths:
+              p = pathlib.PurePosixPath(path)
+              if not (path.startswith("tests/test_") and path.endswith(".py")
+                      and ".." not in p.parts and "\\" not in path
+                      and pathlib.Path(path).is_file()):
+                  raise SystemExit("Invalid test path")
+      - name: Run approved tests
+        shell: python
+        env:
+          TEST_PATHS: ${{ inputs.test_paths }}
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          import os
+          import subprocess
+          import sys
+          paths = os.environ["TEST_PATHS"].split()
+          raise SystemExit(subprocess.call([sys.executable, "-m", "pytest", "-q", *paths]))
