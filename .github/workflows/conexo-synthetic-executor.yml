@@ -1,0 +1,59 @@
+name: Conexo synthetic task executor
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: Synthetic task identifier
+        required: true
+        type: string
+      contract_sha:
+        description: Immutable contract commit SHA (recorded, not fetched or authorized by this prototype)
+        required: true
+        type: string
+      payload_json:
+        description: JSON payload; only echo/count are accepted
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: conexo-synthetic-${{ inputs.task_id }}
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout executor source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Execute allowlisted synthetic task
+        env:
+          CONEXO_TASK_ID: ${{ inputs.task_id }}
+          CONEXO_CONTRACT_SHA: ${{ inputs.contract_sha }}
+          CONEXO_PAYLOAD_JSON: ${{ inputs.payload_json }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: python scripts/actions_executor.py --output artifacts/execution-receipt.json
+
+      - name: Upload temporary receipt evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conexo-synthetic-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/execution-receipt.json
+          if-no-files-found: warn
+          retention-days: 7

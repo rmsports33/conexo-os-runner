@@ -5,8 +5,11 @@ import uuid
 from pathlib import Path
 from scripts.continuity import summary
 from scripts.ownership import acquire, settle_owned
+from scripts.safe_recovery import recover_safe
 
 MAX_ATTEMPTS = 3
+DEFAULT_STALE_SECONDS = 3600
+
 
 def perform(payload):
     if not isinstance(payload, dict):
@@ -23,6 +26,7 @@ def perform(payload):
             raise ValueError("Count requires a list with at most 1000 items")
         return {"count": len(values)}
     raise ValueError("Unsupported task type")
+
 
 def process_one(db):
     owner = "worker-" + uuid.uuid4().hex
@@ -45,23 +49,38 @@ def process_one(db):
     state, attempts = settled
     return {"id": task_id, "status": state, "attempts": attempts, "result": result}
 
-def run(db, limit=10):
+
+def run(db, limit=10, *, stale_seconds=DEFAULT_STALE_SECONDS):
+    """Recover only stale, validated synthetic tasks before claiming new work.
+
+    Recovery is deliberately limited by safe_recovery to idempotent echo/count
+    jobs. Tasks with external effects or unsupported payloads remain untouched.
+    """
     if not 1 <= limit <= 100:
         raise ValueError("Limit must be 1..100")
+    recovery = recover_safe(
+        db,
+        stale_seconds=stale_seconds,
+        max_attempts=MAX_ATTEMPTS,
+        apply=True,
+    )
     processed = []
     for _ in range(limit):
         item = process_one(db)
         if item is None:
             break
         processed.append(item)
-    return {"processed": processed, "queue": summary(db)}
+    return {"recovery": recovery, "processed": processed, "queue": summary(db)}
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", default="local-state/queue.sqlite3")
     parser.add_argument("--limit", type=int, default=10)
+    parser.add_argument("--stale-seconds", type=int, default=DEFAULT_STALE_SECONDS)
     args = parser.parse_args()
-    print(json.dumps(run(Path(args.db), args.limit), sort_keys=True))
+    print(json.dumps(run(Path(args.db), args.limit, stale_seconds=args.stale_seconds), sort_keys=True))
+
 
 if __name__ == "__main__":
     main()
