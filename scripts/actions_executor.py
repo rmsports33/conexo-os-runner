@@ -8,7 +8,6 @@ import hashlib
 import json
 import os
 import re
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -19,6 +18,7 @@ from scripts.worker import perform, run
 TASK_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$")
 SHA_RE = re.compile(r"^[a-f0-9]{40}$")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+MAX_PAYLOAD_BYTES = 16_384
 
 
 def utc_now():
@@ -43,6 +43,8 @@ def execute_synthetic(*, task_id, contract_sha, payload_json, repository,
         errors.append("execution_sha_invalid")
     if not str(run_id).isdigit() or not str(run_attempt).isdigit():
         errors.append("workflow_run_identity_invalid")
+    if not isinstance(payload_json, str) or len(payload_json.encode("utf-8")) > MAX_PAYLOAD_BYTES:
+        errors.append("payload_size_invalid")
 
     payload = None
     if not errors:
@@ -50,7 +52,6 @@ def execute_synthetic(*, task_id, contract_sha, payload_json, repository,
             payload = json.loads(payload_json)
             if not isinstance(payload, dict):
                 raise ValueError("payload_not_object")
-            # Exact worker contract: only echo/count are accepted.
             perform(payload)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             errors.append("payload_rejected:" + str(exc)[:120])
@@ -78,6 +79,7 @@ def execute_synthetic(*, task_id, contract_sha, payload_json, repository,
         "errors": errors,
         "limitations": [
             "synthetic echo/count tasks only",
+            "payload is limited to 16384 UTF-8 bytes",
             "contract SHA is recorded but contract existence and authorization are not verified",
             "receipt is not cryptographically signed or independently attested",
             "workflow artifacts are temporary evidence, not canonical persistence",
