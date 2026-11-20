@@ -17,7 +17,7 @@ python scripts/continuity.py --db local-state/queue.sqlite3 enqueue demo-1 --pay
 python scripts/continuity.py --db local-state/queue.sqlite3 status
 ```
 
-The SQLite file must reside on persistent local storage; GitHub-hosted runner disks are ephemeral. Recovery of interrupted running tasks is **explicit**, not automatic, because retrying a task that has side effects could duplicate work. Do not use this prototype to publish content or execute external commands.
+The SQLite file must reside on persistent local storage; GitHub-hosted runner disks are ephemeral. Do not use this prototype to publish content or execute external commands.
 
 ## Run tests locally
 
@@ -38,7 +38,11 @@ python -m scripts.worker --db local-state/queue.sqlite3 --limit 10
 python scripts/continuity.py --db local-state/queue.sqlite3 status
 ```
 
-The worker has a bounded 3-attempt retry policy. Failed tasks remain marked `failed` after the limit. Recovery of stale tasks is previewed with `python -m scripts.recovery --db local-state/queue.sqlite3`. Applying recovery requires an explicit `--apply` and must not overlap active workers. SQLite and result records must be stored on a persistent machine or volume; hosted GitHub Actions runners do not provide durable queue storage. This is a test prototype, not a production task scheduler.
+The worker has a bounded 3-attempt retry policy. At the start of each worker cycle, it applies stale-task recovery only to payloads that pass the exact worker contract and are one of the idempotent synthetic types `echo` or `count`. Unsupported or side-effecting tasks are skipped and remain untouched. Tasks at the attempt limit are moved to `failed`; eligible stale tasks return to `pending` and can be reclaimed with a new fencing token. The default stale threshold is 3600 seconds and can be changed with `--stale-seconds`.
+
+Recovery can be previewed without writes using `python -m scripts.safe_recovery --db local-state/queue.sqlite3`. Applying it directly remains explicit with `--apply`. The worker's automatic recovery is deliberately limited to the safe synthetic allowlist; it is not a general-purpose retry mechanism for external effects.
+
+SQLite and result records must be stored on durable storage. Hosted GitHub Actions runner disks are ephemeral, so this prototype is not yet a cloud-persistent queue or production task scheduler.
 
 ## SQLite maintenance and backups
 
@@ -66,4 +70,4 @@ powershell -NoProfile -File windows/install-task.ps1
 powershell -NoProfile -File windows/uninstall-task.ps1
 ```
 
-The scheduled task runs every 60 minutes by default, only when the Windows host is available. It does not grant elevated permissions or install a background cloud worker. The maintenance cycle previews recovery but does not apply it. The Windows cycle retains the 30 newest matching snapshots after a successful backup; ensure adequate free disk space. Only synthetic `echo` and `count` tasks are supported. The installer runs the test suite before scheduling. For a controlled local pilot, first run `windows/run-once.ps1` manually and check `python -m scripts.maintenance --db local-state/queue.sqlite3 check` if a database exists. Schedule only with explicit opt-in; uninstalling the task preserves the database and backups. This is not production-ready and does not synchronize across devices.
+The scheduled task runs every 60 minutes by default, only when the Windows host is available. It does not grant elevated permissions or install a background cloud worker. The maintenance cycle performs the same allowlisted recovery before invoking the worker. Schedule only with explicit opt-in; uninstalling the task preserves the database and backups. This is not production-ready and does not synchronize across devices.
