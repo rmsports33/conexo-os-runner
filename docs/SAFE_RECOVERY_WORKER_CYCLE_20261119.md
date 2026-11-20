@@ -34,9 +34,9 @@ It emits a short-lived artifact containing a receipt with workflow run ID, attem
 
 ## Validation
 
-Thirteen focused tests were run locally against the worker, queue, ownership, safe-recovery and Actions-executor source files:
+Thirteen focused tests passed in a temporary local harness that mirrored the changed worker and Actions-executor logic and used disposable SQLite databases:
 
-- 7 worker tests: normal processing, bounded retries, atomic result/state persistence, stale safe task recovery, unsupported task preservation, attempt exhaustion and invalid limit;
-- 6 Actions-executor tests: echo, count, unknown task rejection, malformed contract SHA, non-object payload and payload-size limit.
+- 7 worker scenarios: normal processing, bounded retries, atomic result/state persistence, stale safe task recovery, unsupported task preservation, attempt exhaustion and invalid limit;
+- 6 Actions-executor scenarios: echo, count, unknown task rejection, malformed contract SHA, non-object payload and payload-size limit.
 
-Result: **13 passed, 0 failed**. The workflow YAML was parsed locally and its manual trigger, read-only permission and five-minute timeout were checked. Full repository CI and a real GitHub Actions dispatch remain pending and were not executed.
+Result: **13 passed, 0 failed** in that isolated harness. The workflow YAML was parsed locally and its manual trigger, read-only permission and five-minute timeout were checked. The exact repository branch has not yet run through GitHub Actions; full repository CI and a real workflow dispatch remain pending and were not executed.
