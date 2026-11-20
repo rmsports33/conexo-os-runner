@@ -50,6 +50,11 @@ class ActionsExecutorTests(unittest.TestCase):
         receipt = self.call(["not", "an", "object"])
         self.assertEqual(receipt["status"], "BLOCKED")
 
+    def test_payload_size_is_bounded(self):
+        receipt = self.call({"type": "echo", "value": "x"}, payload_json=' ' * 16385)
+        self.assertEqual(receipt["status"], "BLOCKED")
+        self.assertIn("payload_size_invalid", receipt["errors"])
+
 
 if __name__ == "__main__":
     unittest.main()
