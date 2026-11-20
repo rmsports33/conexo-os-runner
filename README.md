@@ -42,6 +42,12 @@ The worker has a bounded 3-attempt retry policy. At the start of each worker cyc
 
 Recovery can be previewed without writes using `python -m scripts.safe_recovery --db local-state/queue.sqlite3`. Applying it directly remains explicit with `--apply`. The worker's automatic recovery is deliberately limited to the safe synthetic allowlist; it is not a general-purpose retry mechanism for external effects.
 
+## Manual GitHub Actions executor (synthetic only)
+
+`.github/workflows/conexo-synthetic-executor.yml` is a manual `workflow_dispatch` prototype. It accepts a task ID, a 40-character contract SHA and a JSON payload, but executes only `echo` and `count`. The payload is limited to 16 KiB. It has read-only repository permissions and no secrets.
+
+The resulting artifact is retained for 7 days and contains a receipt with the workflow run ID, execution SHA, payload/result hashes and timestamps. The receipt is marked `REVIEW`, not `DONE`; authorization, contract existence and executor identity are explicitly **not verified**. The artifact is temporary evidence, not canonical persistence or proof of an authenticated handoff. Do not use this workflow for editorial publication, WordPress writes or production tasks.
+
 SQLite and result records must be stored on durable storage. Hosted GitHub Actions runner disks are ephemeral, so this prototype is not yet a cloud-persistent queue or production task scheduler.
 
 ## SQLite maintenance and backups
